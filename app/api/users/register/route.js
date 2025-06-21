@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
-import { ClerkClient } from '@clerk/clerk-sdk-node';
+import { Clerk } from '@clerk/clerk-sdk-node';
 
 // Initialize Clerk Client with your secret key from environment variables
-const clerkClient = ClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+const clerkClient =  Clerk({ secretKey: process.env.CLERK_SECRET_KEY });
 
 export async function POST(request) {
   const { clerkUserId, email, profileImageUrl } = await request.json();
