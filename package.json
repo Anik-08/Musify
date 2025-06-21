@@ -12,6 +12,7 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
+    "@clerk/clerk-sdk-node": "^4.13.23",
     "@clerk/nextjs": "^6.18.5",
     "@prisma/client": "^6.7.0",
     "cloudinary": "^2.6.1",
