@@ -94,23 +94,24 @@ const PlaylistManager = ({ onPlaylistSelect }) => {
     fetchAllSongs();
   }, [isLoaded, user]);
 
-  const fetchFavSongs = async (playlistId) => {
-    try {
-      const res = await fetch(`/api/playlists/${playlistId}`);
-      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        const songs = data.map((item) => item.song.id);
-        setFavSongs(songs);
-      } else {
-        console.error('Expected an array for fav songs, got:', data);
-        setFavSongs([]);
-      }
-    } catch (error) {
-      console.error('Error fetching Fav songs:', error);
+const fetchFavSongs = async (playlistId) => {
+  try {
+    const res = await fetch(`/api/playlists/${playlistId}`);
+    if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+    const data = await res.json();
+    console.log('Fav songs data:', data); // Log to debug
+    if (Array.isArray(data)) {
+      const songs = data.map((song) => song.id); // Extract song IDs directly
+      setFavSongs(songs);
+    } else {
+      console.error('Expected an array for fav songs, got:', data);
       setFavSongs([]);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching Fav songs:', error);
+    setFavSongs([]);
+  }
+};
 
   const createPlaylist = async (e) => {
     e.preventDefault();
