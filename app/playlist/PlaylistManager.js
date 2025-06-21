@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
@@ -23,6 +22,9 @@ const PlaylistManager = ({ onPlaylistSelect }) => {
   const [showAddToPlaylist, setShowAddToPlaylist] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
+  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
+  const [isLoadingSongs, setIsLoadingSongs] = useState(false);
+  const [error, setError] = useState(null);
   const [favPlaylistId, setFavPlaylistId] = useState(null);
   const [favSongs, setFavSongs] = useState([]);
   const audioRef = useRef(null);
@@ -32,15 +34,27 @@ const PlaylistManager = ({ onPlaylistSelect }) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('playlist');
 
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.push('/sign-in');
+    }
+  }, [isLoaded, user, router]);
+
   // Fetch playlists and ensure "Fav songs" exists
   useEffect(() => {
     if (!isLoaded || !user) return;
 
+    console.log('User ID:', user.id); // Log user ID for debugging
+
     const fetchPlaylists = async () => {
+      setIsLoadingPlaylists(true);
+      setError(null);
       try {
         const res = await fetch(`/api/playlists?userId=${user.id}`);
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         const data = await res.json();
+        console.log('Playlists data:', data); // Log response
         if (Array.isArray(data)) {
           setPlaylists(data);
           const favPlaylist = data.find((p) => p.name === 'Fav songs');
@@ -56,37 +70,50 @@ const PlaylistManager = ({ onPlaylistSelect }) => {
               });
               if (!createRes.ok) throw new Error(`HTTP error! Status: ${createRes.status}`);
               const newPlaylist = await createRes.json();
+              console.log('Created Fav songs playlist:', newPlaylist); // Log new playlist
               setFavPlaylistId(newPlaylist.id);
               setPlaylists((prev) => [...prev, newPlaylist]);
               await fetchFavSongs(newPlaylist.id);
             } catch (error) {
               console.error('Error creating Fav songs playlist:', error);
+              setError('Failed to create favorite playlist');
             }
           }
         } else {
           console.error('Expected an array for playlists, got:', data);
           setPlaylists([]);
+          setError('Invalid playlist data');
         }
       } catch (error) {
         console.error('Error fetching playlists:', error);
         setPlaylists([]);
+        setError('Failed to load playlists');
+      } finally {
+        setIsLoadingPlaylists(false);
       }
     };
 
     const fetchAllSongs = async () => {
+      setIsLoadingSongs(true);
+      setError(null);
       try {
         const res = await fetch('/api/songs');
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         const data = await res.json();
+        console.log('All songs data:', data); // Log response
         if (Array.isArray(data)) {
           setAllSongs(data);
         } else {
           console.error('Expected an array for songs, got:', data);
           setAllSongs([]);
+          setError('Invalid songs data');
         }
       } catch (error) {
         console.error('Error fetching songs:', error);
         setAllSongs([]);
+        setError('Failed to load songs');
+      } finally {
+        setIsLoadingSongs(false);
       }
     };
 
@@ -94,24 +121,24 @@ const PlaylistManager = ({ onPlaylistSelect }) => {
     fetchAllSongs();
   }, [isLoaded, user]);
 
-const fetchFavSongs = async (playlistId) => {
-  try {
-    const res = await fetch(`/api/playlists/${playlistId}`);
-    if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
-    const data = await res.json();
-    console.log('Fav songs data:', data); // Log to debug
-    if (Array.isArray(data)) {
-      const songs = data.map((song) => song.id); // Extract song IDs directly
-      setFavSongs(songs);
-    } else {
-      console.error('Expected an array for fav songs, got:', data);
+  const fetchFavSongs = async (playlistId) => {
+    try {
+      const res = await fetch(`/api/playlists/${playlistId}`);
+      if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
+      const data = await res.json();
+      console.log('Fav songs data:', data); // Log response
+      if (Array.isArray(data)) {
+        const songs = data.map((song) => song.id);
+        setFavSongs(songs);
+      } else {
+        console.error('Expected an array for fav songs, got:', data);
+        setFavSongs([]);
+      }
+    } catch (error) {
+      console.error('Error fetching Fav songs:', error);
       setFavSongs([]);
     }
-  } catch (error) {
-    console.error('Error fetching Fav songs:', error);
-    setFavSongs([]);
-  }
-};
+  };
 
   const createPlaylist = async (e) => {
     e.preventDefault();
@@ -141,6 +168,7 @@ const fetchFavSongs = async (playlistId) => {
       const res = await fetch(`/api/playlists/${playlistId}`);
       if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
       const data = await res.json();
+      console.log('Playlist songs data:', data); // Log response
       if (Array.isArray(data)) {
         setPlaylistSongs(data);
         setSelectedPlaylist(playlistId);
@@ -424,9 +452,13 @@ const fetchFavSongs = async (playlistId) => {
               <Music className="h-5 w-5 mr-2 text-pink-500" />
               Your Playlists
             </h2>
-            <div className="flex space-x-3 overflow-x-auto">
-              {Array.isArray(playlists) && playlists.length > 0 ? (
-                playlists.map((playlist) => (
+            {isLoadingPlaylists ? (
+              <p className="text-gray-400 text-sm">Loading playlists...</p>
+            ) : error ? (
+              <p className="text-red-500 text-sm">{error}</p>
+            ) : Array.isArray(playlists) && playlists.length > 0 ? (
+              <div className="flex space-x-3 overflow-x-auto">
+                {playlists.map((playlist) => (
                   <div key={playlist.id} className="flex items-center">
                     <button
                       onClick={() => fetchPlaylistSongs(playlist.id)}
@@ -446,18 +478,118 @@ const fetchFavSongs = async (playlistId) => {
                       </button>
                     )}
                   </div>
-                ))
-              ) : (
-                <p className="text-gray-400 text-sm">No playlists available</p>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400 text-sm">No playlists available</p>
+            )}
           </div>
           {selectedPlaylist && (
             <div className="mb-6">
               <h3 className="text-xl font-semibold mt-4 mb-3">Songs in {selectedPlaylistName}</h3>
               {playlistSongs.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {playlistSongs.map((song) => (
+                  {playlistSongs.map((song, index) => (
+                    song && song.id ? (
+                      <div
+                        key={song.id}
+                        className={`bg-gray-800 hover:bg-gray-700 transition p-3 rounded-lg shadow-md relative ${
+                          currentSong && currentSong.id === song.id
+                            ? 'bg-gradient-to-r from-pink-500/20 to-purple-600/20 border border-pink-500'
+                            : ''
+                        }`}
+                      >
+                        <div className="relative">
+                          <Image
+                            src={song.coverUrl || '/api/placeholder/150/150'}
+                            alt={song.title || 'Unknown Title'}
+                            width={150}
+                            height={150}
+                            className="rounded mb-2 w-full h-36 object-cover"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Link
+                              href={`/songs/${song.id}`}
+                              className="text-white font-medium hover:text-pink-400 transition text-sm"
+                            >
+                              {song.title || 'Unknown Title'}
+                            </Link>
+                            <p className="text-xs text-gray-400">{song.artist || 'Unknown Artist'}</p>
+                          </div>
+                          <div className="flex items-center space-x-1.5">
+                            <button
+                              onClick={() => handleAddToFavSongs(song.id)}
+                              className="text-gray-400 hover:text-pink-500 transition"
+                              title="Add to Fav songs"
+                            >
+                              <Heart size={16} fill={favSongs.includes(song.id) ? 'currentColor' : 'none'} />
+                            </button>
+                            <button
+                              onClick={() => removeSongFromPlaylist(selectedPlaylist, song.id)}
+                              className="text-gray-400 hover:text-red-500 transition"
+                              title="Remove from Playlist"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowAddToPlaylist(showAddToPlaylist === song.id ? null : song.id)}
+                                className="p-1.5 bg-pink-500 rounded-full hover:bg-pink-600 transition"
+                              >
+                                <Plus size={14} />
+                              </button>
+                              {showAddToPlaylist === song.id && (
+                                <div className="absolute right-0 top-8 w-40 bg-gray-700 rounded-lg shadow-lg z-10">
+                                  <div className="p-2">
+                                    <p className="text-xs text-gray-400 mb-1">Add to Playlist</p>
+                                    {playlists.map((playlist) => (
+                                      <button
+                                        key={playlist.id}
+                                        onClick={() => addSongToPlaylist(playlist.id, song.id)}
+                                        className="block w-full text-left px-3 py-1.5 text-white hover:bg-gray-600 rounded text-xs transition"
+                                      >
+                                        {playlist.name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => playSong(song)}
+                              className="p-1.5 bg-pink-500 rounded-full hover:bg-pink-600 transition"
+                            >
+                              <Play size={14} fill="white" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p key={index} className="text-gray-400 text-sm">
+                        Invalid song data
+                      </p>
+                    )
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-400 text-center p-3 bg-gray-800 rounded-lg text-sm">
+                  No songs in this playlist yet.
+                </p>
+              )}
+            </div>
+          )}
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold mt-4 mb-3">All Songs</h3>
+            {isLoadingSongs ? (
+              <p className="text-gray-400 text-sm">Loading songs...</p>
+            ) : error ? (
+              <p className="text-red-500 text-sm">{error}</p>
+            ) : allSongs.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {allSongs.map((song, index) => (
+                  song && song.id ? (
                     <div
                       key={song.id}
                       className={`bg-gray-800 hover:bg-gray-700 transition p-3 rounded-lg shadow-md relative ${
@@ -469,7 +601,7 @@ const fetchFavSongs = async (playlistId) => {
                       <div className="relative">
                         <Image
                           src={song.coverUrl || '/api/placeholder/150/150'}
-                          alt={song.title}
+                          alt={song.title || 'Unknown Title'}
                           width={150}
                           height={150}
                           className="rounded mb-2 w-full h-36 object-cover"
@@ -492,13 +624,6 @@ const fetchFavSongs = async (playlistId) => {
                             title="Add to Fav songs"
                           >
                             <Heart size={16} fill={favSongs.includes(song.id) ? 'currentColor' : 'none'} />
-                          </button>
-                          <button
-                            onClick={() => removeSongFromPlaylist(selectedPlaylist, song.id)}
-                            className="text-gray-400 hover:text-red-500 transition"
-                            title="Remove from Playlist"
-                          >
-                            <Trash2 size={16} />
                           </button>
                           <div className="relative">
                             <button
@@ -533,95 +658,18 @@ const fetchFavSongs = async (playlistId) => {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-400 text-center p-3 bg-gray-800 rounded-lg text-sm">
-                  No songs in this playlist yet.
-                </p>
-              )}
-            </div>
-          )}
-          <div className="mb-6">
-            <h3 className="text-xl font-semibold mt-4 mb-3">All Songs</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {allSongs.length > 0 ? (
-                allSongs.map((song) => (
-                  <div
-                    key={song.id}
-                    className={`bg-gray-800 hover:bg-gray-700 transition p-3 rounded-lg shadow-md relative ${
-                      currentSong && currentSong.id === song.id
-                        ? 'bg-gradient-to-r from-pink-500/20 to-purple-600/20 border border-pink-500'
-                        : ''
-                    }`}
-                  >
-                    <div className="relative">
-                      <Image
-                        src={song.coverUrl || '/api/placeholder/150/150'}
-                        alt={song.title}
-                        width={150}
-                        height={150}
-                        className="rounded mb-2 w-full h-36 object-cover"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Link
-                          href={`/songs/${song.id}`}
-                          className="text-white font-medium hover:text-pink-400 transition text-sm"
-                        >
-                          {song.title || 'Unknown Title'}
-                        </Link>
-                        <p className="text-xs text-gray-400">{song.artist || 'Unknown Artist'}</p>
-                      </div>
-                      <div className="flex items-center space-x-1.5">
-                        <button
-                          onClick={() => handleAddToFavSongs(song.id)}
-                          className="text-gray-400 hover:text-pink-500 transition"
-                          title="Add to Fav songs"
-                        >
-                          <Heart size={16} fill={favSongs.includes(song.id) ? 'currentColor' : 'none'} />
-                        </button>
-                        <div className="relative">
-                          <button
-                            onClick={() => setShowAddToPlaylist(showAddToPlaylist === song.id ? null : song.id)}
-                            className="p-1.5 bg-pink-500 rounded-full hover:bg-pink-600 transition"
-                          >
-                            <Plus size={14} />
-                          </button>
-                          {showAddToPlaylist === song.id && (
-                            <div className="absolute right-0 top-8 w-40 bg-gray-700 rounded-lg shadow-lg z-10">
-                              <div className="p-2">
-                                <p className="text-xs text-gray-400 mb-1">Add to Playlist</p>
-                                {playlists.map((playlist) => (
-                                  <button
-                                    key={playlist.id}
-                                    onClick={() => addSongToPlaylist(playlist.id, song.id)}
-                                    className="block w-full text-left px-3 py-1.5 text-white hover:bg-gray-600 rounded text-xs transition"
-                                  >
-                                    {playlist.name}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => playSong(song)}
-                          className="p-1.5 bg-pink-500 rounded-full hover:bg-pink-600 transition"
-                        >
-                          <Play size={14} fill="white" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-400 text-center p-3 bg-gray-800 rounded-lg text-sm">
-                  No songs available.
-                </p>
-              )}
-            </div>
+                  ) : (
+                    <p key={index} className="text-gray-400 text-sm">
+                      Invalid song data
+                    </p>
+                  )
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400 text-center p-3 bg-gray-800 rounded-lg text-sm">
+                No songs available. Please check your connection or try again later.
+              </p>
+            )}
           </div>
         </div>
         {currentSong && (
@@ -636,7 +684,7 @@ const fetchFavSongs = async (playlistId) => {
               <div className="flex items-center w-56">
                 <Image
                   src={currentSong.coverUrl || '/api/placeholder/48/48'}
-                  alt={currentSong.title}
+                  alt={currentSong.title || 'Unknown Title'}
                   width={48}
                   height={48}
                   className="h-12 w-12 object-cover rounded mr-3"
@@ -777,6 +825,5 @@ const fetchFavSongs = async (playlistId) => {
       </div>
     </div>
   );
-};
-
+}
 export default PlaylistManager;
