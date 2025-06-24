@@ -85,8 +85,8 @@ export default function Home() {
           <div className="h-0.5 bg-white rounded-bl-full w-full my-4"></div>
 
           <div className="grid grid-cols-3 justify-between">
-            <h3 className="col-span-2 font-semibold text-left text-md mb-2">POPULAR PODCAST TOPICS</h3>
-            <div className="flex flex-wrap gap-3 text-sm justify-end items-end">
+            <h3 className="md:col-span-2 col-span-1 font-semibold text-left text-md mb-2">POPULAR PODCAST TOPICS</h3>
+            <div className="flex flex-wrap gap-3  col-span-2 md:col-span-1 text-sm justify-end items-end">
               {["Music", "Sport", "Education", "News", "History", "Comedy"].map((tag) => (
                 <button
                   key={tag}
