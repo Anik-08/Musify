@@ -8,54 +8,54 @@ datasource db {
 }
 
 model User {
-  id              String     @id @default(auto()) @map("_id") @db.ObjectId
-  clerkUserId     String     @unique
-  email           String
-  profileImageUrl String?
-  createdAt       DateTime   @default(now())
-  playlists       Playlist[]
-  comments        Comment[]  @relation("UserComments")
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  clerkUserId String     @unique
+  email       String     @unique
+  playlists   Playlist[] @relation("UserPlaylists")
+  comments    Comment[]  @relation("UserComments")
+  songs       Song[]     @relation("UserSongs")
 }
 
 model Song {
   id            String         @id @default(auto()) @map("_id") @db.ObjectId
   title         String
   artist        String
-  album         String
   genre         String
-  releaseDate   DateTime
-  coverUrl      String
   audioUrl      String
-  createdAt     DateTime       @default(now())
-  playlistSongs PlaylistSong[]
+  audioPublicId String
+  coverUrl      String
+  coverPublicId String
+  duration      Int?
+  visibility    String         @default("private") // public or private
+  userId        String?        @db.ObjectId
+  user          User?          @relation("UserSongs", fields: [userId], references: [id])
   comments      Comment[]      @relation("SongComments")
+  PlaylistSong  PlaylistSong[]
 }
 
 model Playlist {
-  id        String         @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  userId    String         @db.ObjectId
-  createdAt DateTime       @default(now())
-  user      User           @relation(fields: [userId], references: [id])
-  songs     PlaylistSong[]
+  id     String         @id @default(auto()) @map("_id") @db.ObjectId
+  name   String
+  userId String?        @db.ObjectId
+  user   User?          @relation("UserPlaylists", fields: [userId], references: [id])
+  songs  PlaylistSong[]
 }
 
 model PlaylistSong {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   playlistId String   @db.ObjectId
   songId     String   @db.ObjectId
-  addedAt    DateTime @default(now())
   playlist   Playlist @relation(fields: [playlistId], references: [id])
-  song       Song     @relation(fields: [songId], references: [id])
+  song       Song     @relation(fields: [songId], references: [id]) // Add this relation
 }
 
 model Comment {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   songId    String   @db.ObjectId
-  userId    String   @db.ObjectId
+  userId    String?  @db.ObjectId
   username  String
   comment   String
   createdAt DateTime @default(now())
   song      Song     @relation("SongComments", fields: [songId], references: [id])
-  user      User     @relation("UserComments", fields: [userId], references: [id])
+  user      User?    @relation("UserComments", fields: [userId], references: [id])
 }

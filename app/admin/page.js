@@ -39,7 +39,7 @@ const AdminPage = () => {
       setIsSongsLoading(true);
       try {
         const res = await fetch('/api/songs');
-        if (!res.ok) throw new Error(`Failed to fetch songs: ${res.status}`);
+        if (!res.ok) throw Error(`Failed to fetch songs: ${res.status}`);
         const data = await res.json();
         console.log('Fetched songs:', data);
         setSongs(data);
@@ -76,84 +76,100 @@ const AdminPage = () => {
   }, []);
 
   const handleAddSong = async (e) => {
-    e.preventDefault();
-    if (!title || !artist || !genre || !audioFile || !coverFile) {
-      setUploadStatus('Please fill in all fields and select both an audio file and a cover image.');
-      return;
-    }
+  e.preventDefault();
+  if (!title || !artist || !genre || !audioFile || !coverFile) {
+    setUploadStatus('Please fill in all fields and select both an audio file and a cover image.');
+    return;
+  }
 
-    setUploadStatus('Uploading...');
-    try {
-      const audioFormData = new FormData();
-      audioFormData.append('file', audioFile);
-      audioFormData.append('upload_preset', 'unsigned_audio');
-      audioFormData.append('resource_type', 'video');
-      audioFormData.append('folder', 'audio');
+  setUploadStatus('Uploading...');
+  try {
+    // Upload audio file using unsigned preset
+    const audioFormData = new FormData();
+    audioFormData.append('file', audioFile);
+    audioFormData.append('upload_preset', 'Audio upload'); // Replace with your audio upload preset name
+    audioFormData.append('folder', 'audio');
+    audioFormData.append('resource_type', 'video');
 
-      const audioResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/upload`,
-        {
-          method: 'POST',
-          body: audioFormData,
-        }
-      );
-      const audioData = await audioResponse.json();
-      if (!audioResponse.ok) throw new Error('Failed to upload audio file: ' + audioData.error?.message);
-
-      const coverFormData = new FormData();
-      coverFormData.append('file', coverFile);
-      coverFormData.append('upload_preset', 'unsigned_image');
-      coverFormData.append('folder', 'covers');
-
-      const coverResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/upload`,
-        {
-          method: 'POST',
-          body: coverFormData,
-        }
-      );
-      const coverData = await coverResponse.json();
-      if (!coverResponse.ok) throw new Error('Failed to upload cover image: ' + coverData.error?.message);
-
-      const songData = {
-        title,
-        artist,
-        genre,
-        audioUrl: audioData.secure_url,
-        audioPublicId: audioData.public_id,
-        coverUrl: coverData.secure_url,
-        coverPublicId: coverData.public_id,
-        duration: audioData.duration || 180,
-      };
-      console.log('Saving song data:', songData);
-
-      const saveResponse = await fetch('/api/songs', {
+    const audioResponse = await fetch(
+      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
+      {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(songData),
-      });
-
-      if (!saveResponse.ok) {
-        const errorData = await saveResponse.json();
-        throw new Error('Failed to save song to database: ' + errorData.error);
+        body: audioFormData,
       }
-
-      const newSong = await saveResponse.json();
-      setSongs((prev) => [...prev, newSong]);
-
-      setTitle('');
-      setArtist('');
-      setGenre('');
-      setAudioFile(null);
-      setCoverFile(null);
-      document.getElementById('audioFileInput').value = '';
-      document.getElementById('coverFileInput').value = '';
-      setUploadStatus('Song added successfully!');
-    } catch (error) {
-      console.error('Error adding song:', error);
-      setUploadStatus('Failed to add song: ' + error.message);
+    );
+    const audioData = await audioResponse.json();
+    if (!audioResponse.ok) {
+      console.error('Audio upload error:', audioData);
+      throw new Error('Failed to upload audio file: ' + (audioData.error?.message || 'Unknown error'));
     }
-  };
+
+    // Upload cover image using unsigned preset
+    const coverFormData = new FormData();
+    coverFormData.append('file', coverFile);
+    coverFormData.append('upload_preset', 'Covers upload'); // Replace with your cover upload preset name
+    coverFormData.append('folder', 'covers');
+    coverFormData.append('resource_type', 'image');
+
+    const coverResponse = await fetch(
+      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
+      {
+        method: 'POST',
+        body: coverFormData,
+      }
+    );
+    const coverData = await coverResponse.json();
+    if (!coverResponse.ok) {
+      console.error('Cover upload error:', coverData);
+      throw new Error('Failed to upload cover image: ' + (coverData.error?.message || 'Unknown error'));
+    }
+
+    // Validate duration
+    let duration = parseInt(audioData.duration, 10);
+    if (isNaN(duration) || duration <= 0) {
+      console.warn('Invalid or missing duration from Cloudinary:', audioData.duration);
+      duration = 180; // Default to 180 seconds
+    }
+
+    const songData = {
+      title,
+      artist,
+      genre,
+      audioUrl: audioData.secure_url,
+      audioPublicId: audioData.public_id,
+      coverUrl: coverData.secure_url,
+      coverPublicId: coverData.public_id,
+      duration,
+    };
+    console.log('Saving song data:', songData);
+
+    const saveResponse = await fetch('/api/songs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(songData),
+    });
+
+    if (!saveResponse.ok) {
+      const errorData = await saveResponse.json();
+      throw new Error('Failed to save song to database: ' + errorData.error);
+    }
+
+    const newSong = await saveResponse.json();
+    setSongs((prev) => [...prev, newSong]);
+
+    setTitle('');
+    setArtist('');
+    setGenre('');
+    setAudioFile(null);
+    setCoverFile(null);
+    document.getElementById('audioFileInput').value = '';
+    document.getElementById('coverFileInput').value = '';
+    setUploadStatus('Song added successfully!');
+  } catch (error) {
+    console.error('Error adding song:', error);
+    setUploadStatus('Failed to add song: ' + error.message);
+  }
+};
 
   const handleDeleteSong = async (songId, audioPublicId, coverPublicId) => {
     setDeleteStatus('Deleting...');
@@ -382,7 +398,7 @@ const AdminPage = () => {
                     </div>
                     <button
                       onClick={() => handleDeleteComment(comment.id)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition"
+                      className="bg-red-500 inline-block hover:bg-red-600 text-white px-4 py-2 rounded transition"
                     >
                       Delete
                     </button>

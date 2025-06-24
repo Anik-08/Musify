@@ -2,6 +2,7 @@
   "name": "musify",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "start": "next start",
@@ -15,7 +16,7 @@
     "@clerk/clerk-sdk-node": "^4.13.23",
     "@clerk/nextjs": "^6.18.5",
     "@prisma/client": "^6.7.0",
-    "cloudinary": "^2.6.1",
+    "cloudinary": "^2.7.0",
     "dotenv": "^16.5.0",
     "lucide-react": "^0.509.0",
     "mongodb": "^6.16.0",
