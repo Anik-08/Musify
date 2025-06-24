@@ -377,39 +377,45 @@ const AdminPage = () => {
             )}
           </div>
 
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-semibold mb-4">Manage Comments</h2>
+          <div className="bg-gray-800 p-6 rounded-xl shadow-xl border border-gray-700">
+            <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Manage Comments</h2>
             {isCommentsLoading ? (
-              <p className="text-gray-400">Loading comments...</p>
+              <p className="text-gray-400 text-center py-4 animate-pulse">Loading comments...</p>
             ) : comments.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {comments.map((comment) => (
                   <div
                     key={comment.id}
-                    className="flex items-center justify-between bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition"
+                    className="bg-gray-700 p-2 rounded-lg hover:bg-gray-600 transition-all duration-200 ease-in-out"
                   >
-                    <div>
-                      <p className="font-medium">{comment.username || 'Unknown User'}</p>
-                      <p className="text-sm text-gray-300">{comment.comment}</p>
-                      <p className="text-sm text-gray-500">Song ID: {comment.songId}</p>
-                      <p className="text-sm text-gray-500">
-                        Posted: {new Date(comment.createdAt).toLocaleString()}
-                      </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <p className="font-semibold text-white text-base">{comment.username || 'Unknown User'}</p>
+                        <p className="text-sm text-gray-300 mt-1 line-clamp-2">{comment.comment}</p>
+                        <p className="text-xs text-gray-500 mt-2">Song ID: {comment.songId}</p>
+                        <p className="text-xs text-gray-500">
+                          Posted: {new Date(comment.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="bg-red-600 text-white text-sm font-medium px-1.5 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-700 transition-all duration-150 ease-in-out"
+                      >
+                        Delete
+                      </button>
                     </div>
-                    <button
-                      onClick={() => handleDeleteComment(comment.id)}
-                      className="bg-red-500 inline-block hover:bg-red-600 text-white px-4 py-2 rounded transition"
-                    >
-                      Delete
-                    </button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-400">No comments available.</p>
+              <p className="text-gray-400 text-center py-4">No comments available.</p>
             )}
             {deleteCommentStatus && (
-              <p className={`mt-4 text-sm ${deleteCommentStatus.includes('Failed') ? 'text-red-400' : 'text-green-400'}`}>
+              <p
+                className={`mt-4 text-sm font-medium text-center ${
+                  deleteCommentStatus.includes('Failed') ? 'text-red-400' : 'text-green-400'
+                } animate-fade-in`}
+              >
                 {deleteCommentStatus}
               </p>
             )}
