@@ -61,7 +61,7 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-lg text-gray-300 mb-8 max-w-xl">
-            Introducing Musify, the revolutionary podcast app that redefines the way you experience audio storytelling.
+            Introducing Musify – a simple music streaming website where you can listen to songs, share your thoughts, and create your own favorites list.
           </p>
 
          <div className="flex flex-col lg:flex-row items-center gap-4 mb-8 justify-center lg:justify-start">
@@ -85,9 +85,9 @@ export default function Home() {
           <div className="h-0.5 bg-white rounded-bl-full w-full my-4"></div>
 
           <div className="grid grid-cols-3 justify-between">
-            <h3 className="md:col-span-2 col-span-1 font-semibold text-left text-md mb-2">POPULAR PODCAST TOPICS</h3>
+            <h3 className="md:col-span-2 col-span-1 font-semibold text-left text-md mb-2">POPULAR GENRE TOPICS</h3>
             <div className="flex flex-wrap gap-3  col-span-2 md:col-span-1 text-sm justify-end items-end">
-              {["Music", "Sport", "Education", "News", "History", "Comedy"].map((tag) => (
+              {["Pop", "Indie", "Electronic", "Metal", "Lofi", "Instrumental"].map((tag) => (
                 <button
                   key={tag}
                   className="px-4 py-2 border border-gray-500 text-gray-300 rounded-full hover:bg-gray-800 hover:text-white transition"
